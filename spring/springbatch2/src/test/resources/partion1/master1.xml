@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+		"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd">
+		
+	<import resource="infrastructure1.xml" />
+	<import resource="slave1.xml" />
+	<import resource="integration1.xml" />
+	
+	<batch:job id="job1">
+		<batch:step id="master1">
+			<batch:partition partitioner="partitioner1" handler="partitionHandler1" />
+		</batch:step>
+	</batch:job>
+	
+	<bean id="partitioner1" class="org.springframework.batch.core.partition.support.MultiResourcePartitioner">
+		<property name="keyName" value="fileName" />
+		<property name="resources" value="classpath:partion1/data/input/input*.txt" />
+	</bean>
+	
+	<bean id="partitionHandler1" class="org.springframework.batch.integration.partition.MessageChannelPartitionHandler">
+		<property name="messagingOperations">
+			<bean class="org.springframework.integration.core.MessagingTemplate">
+				<property name="defaultChannel" ref="requestChannel1" />
+				<property name="receiveTimeout" value="10000" />
+			</bean>
+		</property>
+		<property name="replyChannel" ref="responseChannel1"/>
+		<property name="stepName" value="slave1" />
+		<property name="gridSize" value="2" />
+	</bean>
+		
+</beans>

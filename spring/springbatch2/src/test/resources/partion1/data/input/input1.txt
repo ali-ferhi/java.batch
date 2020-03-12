@@ -1,0 +1,2 @@
+input1 line1
+input1 line2

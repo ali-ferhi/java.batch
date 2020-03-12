@@ -1,0 +1,44 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+	"http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.2.xsd 
+	http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+	http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd">
+	
+	<bean id = "transactionManager" class = "org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+   
+   <bean id = "jobRepository1" class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean"> 
+      <property name = "transactionManager" ref = "transactionManager" /> 
+   </bean>       
+   
+   <bean id = "jobLauncher1" class = "org.springframework.batch.core.launch.support.SimpleJobLauncher"> 
+      <property name = "jobRepository" ref = "jobRepository1" /> 
+   </bean>
+   
+   <batch:job id="job1" job-repository="jobRepository1">  
+      <batch:step id="master.Step">
+            <batch:partition step="slave.Step" partitioner="partitioner1">
+             <!-- grid-size : nombre de Slaves à créer -->
+                <batch:handler grid-size="2" task-executor="taskExecutor1"/>
+            </batch:partition>
+        </batch:step>   
+   </batch:job>
+   
+   <bean id="taskExecutor1" class="org.springframework.core.task.SimpleAsyncTaskExecutor"/>
+     
+    <bean id="partitioner1" class="steppartitionning1.Partitioner1" />
+   
+   <batch:step id="slave.Step" job-repository="jobRepository1">
+        <batch:tasklet>
+            <batch:chunk reader="itemReader1" writer="itemWriter1" commit-interval="2" />
+        </batch:tasklet>
+    </batch:step> 
+    
+    <bean id = "itemReader1" class = "steppartitionning1.ItemReader1" scope="step">
+    	<property name = "criterion" value = "#{stepExecutionContext[criterion]}" />
+    </bean>
+    <bean id = "itemWriter1" class = "steppartitionning1.ItemWriter1" scope="step"/>    
+   
+</beans>

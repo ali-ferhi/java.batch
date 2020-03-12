@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+		"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+		
+	<bean id="connectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL" value="vm://localhost?broker.persistent=false"/>
+		<!-- <property name="brokerURL" value="tcp://localhost:61616"/> -->
+	</bean>
+	
+	<bean id="brokerService" class="org.apache.activemq.broker.BrokerService" init-method="start" destroy-method="stop">
+		<property name="brokerName" value="localhost" />
+		<property name="useJmx" value="false"/>
+		<property name="transportConnectorURIs">
+			<list>
+				<value>vm://127.0.0.1</value>
+			</list>
+		</property>
+		<property name="persistenceAdapter">
+			<bean class="org.apache.activemq.store.memory.MemoryPersistenceAdapter"/>
+		</property>
+	</bean>
+
+</beans>

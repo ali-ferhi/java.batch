@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+		"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+		
+	<bean id="reader1" class="com.manning.sbia.ch13.WrappedItemReader">
+		<property name="delegate" ref="productItemReaderTarget"/>
+	</bean>
+
+ 	<bean id="reader1" scope="step" class="org.springframework.batch.item.file.FlatFileItemReader">
+ 		<property name="resource" value="#{stepExecutionContext[fileName]}"/>
+		<property name="linesToSkip" value="1"/>
+ 		<property name="lineMapper" ref="productLineMapper"/>
+ 	</bean>
+
+ 	<bean id="productLineMapper" class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+ 		<property name="lineTokenizer" ref="productLineTokenizer"/>
+ 		<property name="fieldSetMapper" ref="productFieldSetMapper"/>
+ 	</bean>
+
+	<bean id=" productLineTokenizer" class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+ 		<property name="delimiter" value=","/>
+ 		<property name="names" value="id,name,description,specific,price"/>
+	</bean>
+
+	<bean id="productFieldSetMapper" class="com.manning.sbia.ch13.ProductFieldSetMapper"/>
+
+	<bean id="writer1" class="com.manning.sbia.ch13.DummyProductWriter" scope="step"/>
+		
+</beans>

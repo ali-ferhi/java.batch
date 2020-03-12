@@ -1,0 +1,47 @@
+<beans
+	xmlns = "http://www.springframework.org/schema/beans" 
+	xmlns:batch = "http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" 
+	xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance" 
+   xsi:schemaLocation = 
+   "http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+   http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+   http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd">
+   
+   <bean id="dataSource1" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="url" value="jdbc:postgresql://localhost:5432/database1"/>
+		<property name="username" value="postgres"/>
+		<property name="password" value="postgres"/>
+		<property name="driverClassName" value="org.postgresql.Driver"/>
+  </bean>
+  
+  <!-- <jdbc:initialize-database data-source="dataSource1">
+		<jdbc:script location="classpath:/org/springframework/batch/core/schema-postgresql.sql"/>
+	</jdbc:initialize-database> -->
+   
+   <bean id = "transactionManager1" class = "org.springframework.jdbc.datasource.DataSourceTransactionManager">
+   		<property name = "dataSource" ref = "dataSource1" />
+   </bean>
+   
+   <bean id = "jobRepository1" class="org.springframework.batch.core.repository.support.JobRepositoryFactoryBean"> 
+      <property name = "transactionManager" ref = "transactionManager1" />
+      <property name = "dataSource" ref = "dataSource1" />        
+   </bean>       
+   
+   <bean id = "jobLauncher1" class = "org.springframework.batch.core.launch.support.SimpleJobLauncher"> 
+      <property name = "jobRepository" ref = "jobRepository1" /> 
+   </bean>
+   
+   <batch:job id="job1" restartable="true" job-repository="jobRepository1">  
+      <batch:step id = "step1OfJob1"> 
+         <tasklet transaction-manager="transactionManager1">
+         	<batch:chunk reader = "itemReader1" processor = "itemProcessor1" writer = "itemWriter1" commit-interval="1"/>
+         </tasklet>   
+      </batch:step>    
+   </batch:job>
+   
+   <bean id = "itemReader1" class = "restart.ItemReader1" />
+   <bean id = "itemProcessor1" class = "restart.ItemProcessor1" />
+   <bean id = "itemWriter1" class = "restart.ItemWriter1" />
+
+</beans>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+		"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd">
+		
+	<import resource="integration-jms.xml" />
+		
+	<int:channel id="requestChannel1" />
+		
+	<int:channel id="responseChannel1" scope="thread">
+		<int:queue />
+		<int:interceptors>
+			<bean id="pollerInterceptor" class="org.springframework.batch.integration.chunk.MessageSourcePollerInterceptor">
+				<property name="messageSource">
+					<bean class="org.springframework.integration.jms.JmsDestinationPollingSource">
+						<constructor-arg>
+							<bean class="org.springframework.jms.core.JmsTemplate">
+								<property name="connectionFactory" ref="connectionFactory1" />
+								<property name="defaultDestinationName" value="responseDestination1" />
+								<property name="receiveTimeout" value="100" />
+							</bean>
+						</constructor-arg>
+					</bean>
+				</property>
+				<property name="channel" ref="incomingChannel1"/>
+			</bean>
+		</int:interceptors>
+	</int:channel>
+	
+	<int:channel id="incoming" />
+	
+	<int:transformer input-channel="incomingChannel1" output-channel="responseChannel1" ref="headerExtractor1" method="extract" />
+	
+	<bean id="headerExtractor1" class="org.springframework.batch.integration.chunk.JmsRedeliveredExtractor"/>
+
+	<bean id="stepExecutionRequestHandler" class="org.springframework.batch.integration.partition.StepExecutionRequestHandler">
+		<property name="jobExplorer" ref="jobExplorer"/>
+		<property name="stepLocator" ref="stepLocator"/>
+	</bean>
+
+	<bean id="stepLocator" class="org.springframework.batch.integration.partition.BeanFactoryStepLocator" />
+
+	<bean id="jobExplorer" class="org.springframework.batch.core.explore.support.MapJobExplorerFactoryBean">
+		<property name="repositoryFactory" ref="&amp;jobRepository" />
+	</bean>	
+
+</beans>

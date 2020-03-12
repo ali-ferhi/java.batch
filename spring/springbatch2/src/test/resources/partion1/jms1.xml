@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:jms="http://www.springframework.org/schema/jms"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+		"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms.xsd">
+		
+	<bean id="connectionFactory1" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL" value="tcp://localhost:61616?broker.persistent=false"/>
+	</bean>
+	
+	<jms:listener-container connection-factory="connectionFactory1" transaction-manager="transactionManager" acknowledge="transacted" concurrency="1">
+		<jms:listener destination="requestDestination1" response-destination="responseDestination1" ref="stepExecutionRequestHandler1" method="handle" />
+	</jms:listener-container>
+	
+	<bean id="stepExecutionRequestHandler1" class="org.springframework.batch.integration.partition.StepExecutionRequestHandler">
+		<property name="jobExplorer" ref="jobExplorer1"/>
+		<property name="stepLocator" ref="stepLocator1"/>
+	</bean>
+
+	<bean id="jobExplorer1" class="org.springframework.batch.core.explore.support.MapJobExplorerFactoryBean">
+		<property name="repositoryFactory" ref="&amp;jobRepository" />
+	</bean>
+	
+	<bean id="stepLocator1" class="org.springframework.batch.integration.partition.BeanFactoryStepLocator" />
+
+</beans>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+		"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd">
+		
+	<import resource="integrationjms.xml" />
+	
+	<!-- permet d'envoyer les données partitionnées aux slaves -->
+	<bean id="handler" class="org.springframework.batch.integration.partition.MessageChannelPartitionHandler">
+		<!-- permet de config le client de msg Spring Integ qui peut exé les req sur les cannaux -->
+		<property name="messagingOperations">
+			<bean class="org.springframework.integration.core.MessagingTemplate">
+				<property name="defaultChannel" ref="requestChannel" />
+				<property name="receiveTimeout" value="3600000" />
+			</bean>
+		</property>
+		<!-- canal d'écoute des réponses -->
+		<property name="replyChannel" ref="replyChannel"/>
+		<!-- step à exé sur le slave -->
+		<property name="stepName" value="slave" />
+		<!--  -->
+		<property name="gridSize" value="2" />
+	</bean>
+		
+	<int:channel id="requestChannel" />
+	
+	<int:channel id="incomingChannel" />
+		
+	<int:channel id="replyChannel" scope="thread">
+		<int:queue />
+		<int:interceptors>
+			<bean id="pollerInterceptor" class="org.springframework.batch.integration.chunk.MessageSourcePollerInterceptor">
+				<property name="messageSource">
+					<bean class="org.springframework.integration.jms.JmsDestinationPollingSource">
+						<constructor-arg>
+							<bean class="org.springframework.jms.core.JmsTemplate">
+								<property name="connectionFactory" ref="connectionFactory" />
+								<property name="defaultDestinationName" value="replyChannel" />
+								<property name="receiveTimeout" value="3600000" />
+							</bean>
+						</constructor-arg>
+					</bean>
+				</property>
+				<property name="channel" ref="incomingChannel"/>
+			</bean>
+		</int:interceptors>
+	</int:channel>	
+	
+	<int:transformer input-channel="incomingChannel" output-channel="replyChannel" ref="headerExtractor" method="extract" />
+	
+	<!-- <int:aggregator ref="handler" send-timeout="10000" input-channel="requestChannel" output-channel="replyChannel">
+		<int:poller>
+			<int:interval-trigger interval="10" />
+		</int:poller>
+	</int:aggregator -->
+	
+	<bean class="org.springframework.beans.factory.config.CustomScopeConfigurer">
+		<property name="scopes">
+			<map>
+				<entry key="thread">
+					<bean class="org.springframework.context.support.SimpleThreadScope" />
+				</entry>
+			</map>
+		</property>
+	</bean>
+	
+	<bean id="headerExtractor" class="org.springframework.batch.integration.chunk.JmsRedeliveredExtractor"/>
+	
+	<bean id="taskExecutor"
+		class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<property name="corePoolSize" value="5" />
+		<property name="maxPoolSize" value="5" />
+	</bean>
+	
+	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+		<property name="connectionFactory" ref="connectionFactory" />
+		<property name="receiveTimeout" value="100" />
+		<property name="sessionTransacted" value="true" />
+	</bean>
+
+</beans>

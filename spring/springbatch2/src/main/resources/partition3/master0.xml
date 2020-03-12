@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:batch="http://www.springframework.org/schema/batch"       
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+       xmlns:jms="http://www.springframework.org/schema/jms"       
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation=
+               "http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+				http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+                http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+                 http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+                http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms.xsd">
+
+
+	<!-- ref : http://www.ontheserverside.com/blog/2014/07/23/horizontal-and-vertical-scaling-strategies-for-batch-applications -->
+
+	<import resource="infrastructure.xml" />
+	<import resource="item.xml" />
+	<import resource="amq.xml" />
+	
+	<bean id="jobExplorer" class="org.springframework.batch.core.explore.support.MapJobExplorerFactoryBean">
+		<property name="repositoryFactory" ref="&amp;jobRepository" />
+	</bean>
+
+    <bean id="partitioner" class="partition2.Partitioner2"/>
+
+	<batch:job id="job">
+		<batch:step id="master">
+			<batch:partition partitioner="partitioner" handler="masterHandler" step="slave" />
+		</batch:step>
+	</batch:job>
+
+	<batch:step id="slave">
+		<batch:tasklet>
+			<batch:chunk reader="reader" writer="writer" commit-interval="1" />
+		</batch:tasklet>
+	</batch:step>
+
+	<bean id="masterHandler" class="org.springframework.batch.integration.partition.MessageChannelPartitionHandler">
+		<property name="stepName" value="slave" />
+		<property name="gridSize" value="2" />
+		<property name="messagingOperations">
+			<bean class="org.springframework.integration.core.MessagingTemplate">
+				<property name="defaultChannel" ref="requestChannel"/>
+			</bean>
+		</property>
+		<property name="replyChannel" ref="responseChannel" />
+	</bean>
+
+	<bean id="slaveHandler" class="org.springframework.batch.integration.partition.StepExecutionRequestHandler">
+		<property name="jobExplorer" ref="jobExplorer" />
+		<property name="stepLocator">
+			<bean class="org.springframework.batch.integration.partition.BeanFactoryStepLocator" />
+		</property>
+	</bean>
+
+
+	<!-- master -->
+	<int:channel id="requestChannel" />
+	<int-jms:outbound-channel-adapter connection-factory="jmsConnectionFactory" channel="requestChannel" destination-name="requestQueue" />
+
+
+	<!-- slave -->
+	<int-jms:message-driven-channel-adapter connection-factory="jmsConnectionFactory" destination-name="requestQueue" channel="inSlaveChannel" concurrent-consumers="2"/>
+	<int:channel id="inSlaveChannel" />
+	<int:service-activator input-channel="inSlaveChannel" output-channel="outSlaveChannel" ref="slaveHandler" method="handle" />
+
+	<int:channel id="outSlaveChannel" />
+	<int-jms:outbound-channel-adapter connection-factory="jmsConnectionFactory" destination-name="responseQueue" channel="outSlaveChannel" />
+
+
+	<!-- master -->
+	<int-jms:message-driven-channel-adapter connection-factory="jmsConnectionFactory" channel="stagingChannel" destination-name="responseQueue" />
+
+	<int:channel id="stagingChannel" />
+
+	<int:aggregator ref="masterHandler" method="aggregate" input-channel="stagingChannel" output-channel="responseChannel" send-timeout="3600000"/>
+	<!-- 1h in [ms] -->
+
+	<int:channel id="responseChannel">
+		<int:queue />
+	</int:channel>			
+
+</beans>

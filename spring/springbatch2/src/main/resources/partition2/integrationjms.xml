@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+		"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd">
+		
+	<import resource="jms.xml" />
+		
+	<int-jms:outbound-channel-adapter connection-factory="connectionFactory" channel="requestChannel" destination-name="requestChannel" />
+	
+	
+	<!-- traite la partition des données reçues -->
+	<bean id="stepExecutionRequestHandler" class="org.springframework.batch.integration.partition.StepExecutionRequestHandler">
+		<property name="jobExplorer" ref="jobExplorer"/>
+		<property name="stepLocator" ref="stepLocator"/>
+	</bean>
+
+	<bean id="jobExplorer" class="org.springframework.batch.core.explore.support.MapJobExplorerFactoryBean">
+		<property name="repositoryFactory" ref="&amp;jobRepository" />
+	</bean>
+	
+	<!-- détermine quelle step à exé dans le Spring Context courant -->
+	<bean id="stepLocator" class="org.springframework.batch.integration.partition.BeanFactoryStepLocator" />
+	
+</beans>

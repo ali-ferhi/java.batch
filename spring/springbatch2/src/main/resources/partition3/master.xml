@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:batch="http://www.springframework.org/schema/batch"       
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+       xmlns:jms="http://www.springframework.org/schema/jms"       
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation=
+               "http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+				http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+                http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+                 http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+                http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms.xsd">
+
+	<import resource="infrastructure.xml" />
+	
+	<import resource="amq.xml" />    
+
+	<batch:job id="job">
+		<batch:step id="master">
+			<batch:partition partitioner="partitioner" handler="masterHandler" step="slave" />
+		</batch:step>
+	</batch:job>
+	
+	<bean id="partitioner" class="partition2.Partitioner2"/>
+
+	<!-- envoie les données partitionnées aux noeuds slaves (workers) sous forme de StepExecutionRequest et reçoie les réponses en utilisant un middleware de messagerie-->
+	<bean id="masterHandler" class="org.springframework.batch.integration.partition.MessageChannelPartitionHandler">
+		
+		<!-- step à exé sur le slave -->
+		<property name="stepName" value="slave" />
+		
+		<!-- Nombre de slaves à créer -->
+		<property name="gridSize" value="2" />
+		
+		<!-- config le client de msg Spring Integ qui peut exé les req sur les cannaux -->
+		<property name="messagingOperations">
+			<bean class="org.springframework.integration.core.MessagingTemplate">
+			
+				<!-- canal d'envoie des req -->
+				<property name="defaultChannel" ref="requestChannel"/>
+			</bean>
+		</property>
+		
+		<!-- canal d'écoute des réponses des slaves -->
+		<property name="replyChannel" ref="responseChannel" />
+	</bean>
+
+	<!-- les cannaux Spring Integ utilisés comme intermédiaires de transfert des données et permettent une abstarction aux protocoles -->
+	
+	<!-- canal des req -->
+	<int:channel id="requestChannel" />
+	
+	<!-- canal de la rép aggrégée des slaves -->
+	<int:channel id="responseChannel">
+		<int:queue />
+	</int:channel>
+	
+	<!-- canal de staging des rép des slaves -->
+	<int:channel id="stagingChannel" />
+	
+	
+	<int-jms:outbound-channel-adapter connection-factory="jmsConnectionFactory" channel="requestChannel" destination-name="requestQueue" />
+
+	<int-jms:message-driven-channel-adapter connection-factory="jmsConnectionFactory" channel="stagingChannel" destination-name="responseQueue" />
+
+	
+	
+	<int:aggregator ref="masterHandler" method="aggregate" input-channel="stagingChannel" output-channel="responseChannel" send-timeout="3600000"/>				
+
+</beans>

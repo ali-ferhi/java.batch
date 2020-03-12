@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation=
+		"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd">
+		
+	<import resource="jms.xml" />
+		
+	<int-jms:outbound-channel-adapter connection-factory="connectionFactory1" channel="requestChannel1" destination-name="requestDestination1" />
+	
+</beans>

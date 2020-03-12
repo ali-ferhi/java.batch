@@ -1,0 +1,66 @@
+<beans
+	xmlns = "http://www.springframework.org/schema/beans" 
+	xmlns:batch = "http://www.springframework.org/schema/batch" 
+	xmlns:util = "http://www.springframework.org/schema/util"
+	xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance" 
+   xsi:schemaLocation = 
+   "http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.2.xsd 
+   http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+   http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd">
+   
+   <bean id = "transactionManager1" class = "org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+   
+   <bean id = "jobRepository1" class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean"> 
+      <property name = "transactionManager" ref = "transactionManager1" /> 
+   </bean>       
+   
+   <bean id = "jobLauncher1" class = "org.springframework.batch.core.launch.support.SimpleJobLauncher"> 
+      <property name = "jobRepository" ref = "jobRepository1" /> 
+   </bean>
+   
+   <batch:job id="job1" job-repository="jobRepository1">  
+      <batch:step id = "step1OfJob1"> 
+         <tasklet transaction-manager="transactionManager1">
+         	<batch:chunk reader = "itemReader1" processor = "itemProcessor1" writer = "itemWriter1" commit-interval="1"/>
+         	<listeners>
+            	<listener ref="itemReadListener1"/>
+        	</listeners>
+         </tasklet>   
+      </batch:step>    
+   </batch:job>
+   
+   <batch:job id="job2" job-repository="jobRepository1">  
+      <batch:step id = "step1OfJob2"> 
+         <tasklet transaction-manager="transactionManager1">
+         	<batch:chunk reader = "xmlItemReader1" processor = "itemProcessor2" writer = "itemWriter1" commit-interval="1"/>
+         	<listeners>
+            	<listener ref="itemReadListener2"/>
+        	</listeners>
+         </tasklet>   
+      </batch:step>    
+   </batch:job>
+   
+   <bean id = "itemReader1" class = "basic1.ItemReader1" />
+   <bean id = "itemProcessor1" class = "basic1.ItemProcessor1" />
+   <bean id = "itemProcessor2" class = "basic1.ItemProcessor2" />
+   <bean id = "itemWriter1" class = "basic1.ItemWriter1" />
+   <bean id = "itemReadListener1" class = "basic1.ItemReadListener1" />
+   <bean id = "itemReadListener2" class = "basic1.ItemReadListener2" />
+
+	<bean id = "xmlItemReader1" class = "org.springframework.batch.item.xml.StaxEventItemReader"> 
+      <property name = "fragmentRootElementName" value = "entity1" /> 
+      <property name = "resource" value = "classpath:in/in1.xml" /> 
+      <property name = "unmarshaller" ref = "customUnMarshaller" /> 
+   </bean> 
+      
+   <bean id = "customUnMarshaller" class = "org.springframework.oxm.xstream.XStreamMarshaller">
+      <property name = "aliases"> 
+         <util:map id = "aliases"> 
+            <entry key = "entity1" value = "basic1.Entity1" />
+            <!-- <entry key = "id" value = "" /> 
+            <entry key = "name" value = "" /> -->             
+         </util:map> 
+      </property> 
+   </bean>
+
+</beans>

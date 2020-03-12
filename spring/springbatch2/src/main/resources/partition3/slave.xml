@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:batch="http://www.springframework.org/schema/batch"       
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+       xmlns:jms="http://www.springframework.org/schema/jms"       
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation=
+               "http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+				http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+                http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+                 http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+                http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms.xsd">
+
+	<import resource="item.xml" />
+	<import resource="util.xml" />
+	<import resource="amq.xml" />
+
+	<batch:step id="slave">
+		<batch:tasklet>
+			<batch:chunk reader="reader" writer="writer" commit-interval="1" />
+		</batch:tasklet>
+	</batch:step>
+
+	<!-- traite les requêtes d'exé des partitions -->
+	<bean id="slaveHandler" class="org.springframework.batch.integration.partition.StepExecutionRequestHandler">		
+		<property name="jobExplorer" ref="jobExplorer" />		
+		<property name="stepLocator" ref="stepLocator"/>
+	</bean>
+	
+	<int:channel id="inSlaveChannel" />
+	<int:channel id="outSlaveChannel" />
+	
+	<int-jms:message-driven-channel-adapter connection-factory="jmsConnectionFactory" destination-name="requestQueue" channel="inSlaveChannel" concurrent-consumers="2"/>
+	
+	<int:service-activator input-channel="inSlaveChannel" output-channel="outSlaveChannel" ref="slaveHandler" method="handle" />
+
+	
+	<int-jms:outbound-channel-adapter connection-factory="jmsConnectionFactory" destination-name="responseQueue" channel="outSlaveChannel" />		
+
+</beans>
